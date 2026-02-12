@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
     Users, Bus, MapPin, FileSpreadsheet, LogOut, 
-    ArrowRight, Activity 
+    ArrowRight, Activity, Map 
 } from 'lucide-react';
 import { AdminAPI, API } from '../lib/api'; 
 import PetaSebaran from '../components/PetaSebaran';
@@ -19,7 +19,6 @@ export default function AdminDashboard() {
 
     const loadStats = async () => {
         try {
-            // Kita pakai endpoint pendaftar untuk hitung manual statistik ringkas
             const res = await AdminAPI.getPendaftar();
             if (Array.isArray(res)) {
                 setStats({
@@ -49,51 +48,63 @@ export default function AdminDashboard() {
                 </div>
             </header>
 
-            {/* MENU NAVIGASI UTAMA (YANG BARU) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {/* KARTU 1: KE HALAMAN VERIFIKASI */}
+            {/* MENU NAVIGASI UTAMA */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                
+                {/* 1. VERIFIKASI */}
                 <div 
                     onClick={() => navigate('/admin/verifikasi')}
                     className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg transition cursor-pointer group relative overflow-hidden"
                 >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -mr-8 -mt-8 transition group-hover:bg-blue-100"></div>
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-6 -mt-6 transition group-hover:bg-blue-100"></div>
                     <div className="relative z-10">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
-                                <Users size={24}/>
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-800">Verifikasi Pendaftar</h3>
+                            <div className="p-3 bg-blue-100 text-blue-600 rounded-lg"><Users size={24}/></div>
+                            <h3 className="text-lg font-bold text-slate-800">Verifikasi</h3>
                         </div>
-                        <p className="text-slate-500 text-sm mb-4">
-                            Cek data masuk, verifikasi keluarga, plotting bus, dan kirim WA H-3.
-                        </p>
+                        <p className="text-slate-500 text-sm mb-4">Cek data, plotting bus, & WA.</p>
                         <div className="flex items-center gap-2 text-blue-600 font-bold text-sm">
-                            Kelola {stats.total} Pendaftar <ArrowRight size={16}/>
+                            {stats.total} Pendaftar <ArrowRight size={16}/>
                         </div>
                     </div>
                 </div>
 
-                {/* KARTU 2: KE HALAMAN CRUD BUS */}
+                {/* 2. MANAJEMEN BUS */}
                 <div 
                     onClick={() => navigate('/admin/kendaraan')}
                     className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg transition cursor-pointer group relative overflow-hidden"
                 >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition group-hover:bg-purple-100"></div>
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-bl-full -mr-6 -mt-6 transition group-hover:bg-purple-100"></div>
                     <div className="relative z-10">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
-                                <Bus size={24}/>
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-800">Manajemen Armada</h3>
+                            <div className="p-3 bg-purple-100 text-purple-600 rounded-lg"><Bus size={24}/></div>
+                            <h3 className="text-lg font-bold text-slate-800">Armada Bus</h3>
                         </div>
-                        <p className="text-slate-500 text-sm mb-4">
-                            Tambah bus baru, atur kapasitas kursi, dan hapus armada per rute.
-                        </p>
+                        <p className="text-slate-500 text-sm mb-4">Atur bus & kapasitas kursi.</p>
                         <div className="flex items-center gap-2 text-purple-600 font-bold text-sm">
-                            Atur Bus & Kuota <ArrowRight size={16}/>
+                            Kelola Armada <ArrowRight size={16}/>
                         </div>
                     </div>
                 </div>
+
+                {/* 3. MANAJEMEN RUTE (SAYA TAMBAHKAN INI) */}
+                <div 
+                    onClick={() => navigate('/admin/rute')}
+                    className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg transition cursor-pointer group relative overflow-hidden"
+                >
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50 rounded-bl-full -mr-6 -mt-6 transition group-hover:bg-orange-100"></div>
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-orange-100 text-orange-600 rounded-lg"><Map size={24}/></div>
+                            <h3 className="text-lg font-bold text-slate-800">Rute & Jadwal</h3>
+                        </div>
+                        <p className="text-slate-500 text-sm mb-4">Atur tujuan & waktu berangkat.</p>
+                        <div className="flex items-center gap-2 text-orange-600 font-bold text-sm">
+                            Kelola Rute <ArrowRight size={16}/>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             {/* STATISTIK RINGKAS */}
@@ -121,7 +132,7 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* PETA SEBARAN (TETAP ADA) */}
+            {/* PETA SEBARAN */}
             <div className="bg-white p-1 rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 text-xs font-bold text-slate-500 flex items-center gap-2 uppercase tracking-wide">
                     <MapPin size={14}/> Peta Sebaran Pemudik

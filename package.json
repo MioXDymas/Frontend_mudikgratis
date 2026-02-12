@@ -5,17 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "framer-motion": "^12.29.2",
-<<<<<<< HEAD
+
     "git": "^0.1.5",
-=======
->>>>>>> fd068c7bd5b702d1ebdef5cfb1c6d7e7253f6f70
     "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",

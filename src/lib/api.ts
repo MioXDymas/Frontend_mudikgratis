@@ -28,6 +28,7 @@ export const API = {
   EXPORT: `${BASE_URL}/api/admin/export`,
   TIKET: `${BASE_URL}/api/tiket`,
   RIWAYAT: `${BASE_URL}/api/pendaftaran/riwayat`,
+  KONFIRMASI: `${BASE_URL}/api/pendaftaran/konfirmasi-kehadiran`,
 }
 
 /* ================= FETCH WRAPPER ================= */

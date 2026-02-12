@@ -10,17 +10,21 @@ import {
   Info,
   HelpCircle,
   User,
-  MapPin
+  MapPin,
+  Clock,
+  AlertCircle,
+  Ticket,
+  Loader2
 } from "lucide-react"
 
-// HERO IMAGES (Pastikan path asset ini benar di projectmu)
+// HERO IMAGES
 import hero1 from "../assets/dashboard image header1.jpeg"
 import hero2 from "../assets/dashboard image header2.jpeg"
 import hero3 from "../assets/dashboard image header3.jpeg"
 import hero4 from "../assets/dashboard image header4.jpeg"
 
 // =====================
-// TYPE DATA (Updated sesuai Backend Resource Baru)
+// TYPE DATA
 // =====================
 type Pendaftaran = {
   pendaftaran_id: number
@@ -28,11 +32,10 @@ type Pendaftaran = {
   status_pendaftaran: string
   nama_peserta: string
   nik_peserta: string
-  // Field ini sekarang di-flatten dari backend
   tujuan: string
   tanggal_keberangkatan: string
-  nama_bus: string
-  plat_nomor: string
+  nama_bus: string | null // Bisa null dari backend
+  plat_nomor: string | null
 }
 
 export default function Dashboard() {
@@ -65,17 +68,19 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [heroImages.length])
 
-  // ================= FETCH =================
+  // ================= FETCH DATA =================
   useEffect(() => {
     if (!token || !userId) {
       setLoading(false)
       return
     }
 
-    fetch(API.RIWAYAT, {
+    const url = API.RIWAYAT || "http://localhost:8080/api/pendaftaran/riwayat"
+
+    fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
-        userId,
+        userId: userId,
       },
     })
       .then((res) => res.json())
@@ -99,10 +104,16 @@ export default function Dashboard() {
   // ================= DOWNLOAD =================
   const handleDownload = async (id: number, nama: string) => {
     try {
+      // Kita fetch BLOB (Binary Large Object) PDF
       const res = await fetch(`${API.TIKET}/download/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) throw new Error("Gagal")
+      
+      if (!res.ok) {
+          // Kalau backend nolak (misal belum plotting), baca error text-nya
+          const errorText = await res.text();
+          throw new Error(errorText || "Gagal download");
+      }
       
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
@@ -110,15 +121,24 @@ export default function Dashboard() {
       a.href = url
       a.download = `Tiket_Mudik_${nama.replace(/\s+/g, "_")}.pdf`
       a.click()
-    } catch {
-      alert("Tiket belum tersedia atau terjadi kesalahan.")
+      window.URL.revokeObjectURL(url) // Bersihkan memory
+    } catch (err: any) {
+      // Tampilkan pesan error dari backend (misal: "Admin belum plotting")
+      let msg = err.message;
+      if(msg.includes("{")) { // Kalau errornya JSON object
+          try { msg = JSON.parse(msg).error } catch {}
+      }
+      alert("⚠️ Gagal: " + msg)
     }
   }
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-500 font-bold bg-slate-50">
-        <div className="animate-pulse">Memuat data mudik...</div>
+        <div className="animate-pulse flex flex-col items-center gap-2">
+            <Loader2 className="animate-spin text-blue-600"/>
+            <span>Memuat data mudik...</span>
+        </div>
       </div>
     )
   }
@@ -126,7 +146,7 @@ export default function Dashboard() {
   return (
     <main className="min-h-screen bg-slate-50 pb-24 font-sans">
 
-      {/* ================= HERO ================= */}
+      {/* ================= HERO SECTION ================= */}
       <section className="relative h-[240px] sm:h-[280px] overflow-hidden rounded-b-[40px] shadow-lg">
         <img
           src={heroImages[heroIndex]}
@@ -142,7 +162,7 @@ export default function Dashboard() {
           <div className="relative">
             <button
               onClick={() => setOpenMenu(!openMenu)}
-              className="flex items-center gap-3 text-white hover:bg-white/10 px-3 py-2 rounded-full transition"
+              className="flex items-center gap-3 text-white hover:bg-white/10 px-3 py-2 rounded-full transition border border-white/20 backdrop-blur-sm"
             >
               <div className="text-right hidden sm:block">
                 <p className="text-xs opacity-80">Halo,</p>
@@ -158,7 +178,7 @@ export default function Dashboard() {
             </button>
 
             {openMenu && (
-              <div className="absolute right-0 mt-3 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-40 animate-fade-in-down">
+              <div className="absolute right-0 mt-3 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-40 animate-fade-in-down origin-top-right">
                 <MenuItem
                   icon={<Info size={18} />}
                   label="Tentang Program"
@@ -185,33 +205,35 @@ export default function Dashboard() {
         </div>
 
         <div className="relative z-10 max-w-5xl mx-auto px-6 h-full flex flex-col justify-center text-white">
+          <span className="bg-blue-500/30 w-fit px-3 py-1 rounded-full text-xs font-bold mb-2 border border-blue-400/50 backdrop-blur-sm">
+             Mudik Gratis 2026
+          </span>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2 drop-shadow-md">
-            Mudik Gratis 2026
+            Seulamat Jalan, <br/>Sampai Tujuan.
           </h1>
-          <p className="text-blue-100 text-lg max-w-lg leading-relaxed drop-shadow-sm">
-            Layanan resmi Pemerintah Aceh untuk perjalanan mudik yang aman, nyaman, dan berkesan.
+          <p className="text-blue-100 text-sm sm:text-base max-w-lg leading-relaxed drop-shadow-sm">
+            Pantau status pendaftaran dan tiket perjalanan mudik Anda di sini.
           </p>
         </div>
       </section>
 
-      {/* ================= CONTENT ================= */}
-      <section className="max-w-5xl mx-auto px-6 -mt-16 relative z-20 space-y-8">
+      {/* ================= MAIN CONTENT ================= */}
+      <section className="max-w-5xl mx-auto px-6 -mt-12 relative z-20 space-y-8">
 
-        {/* INFO KUOTA */}
+        {/* INFO KUOTA CARD */}
         <div className="bg-white rounded-2xl p-6 shadow-xl border border-slate-100 flex flex-col md:flex-row items-center gap-6">
-          <div className="p-4 bg-blue-50 rounded-full text-blue-600">
+          <div className="p-4 bg-blue-50 rounded-full text-blue-600 shadow-inner">
             <User size={32} />
           </div>
           <div className="flex-1 text-center md:text-left">
-            <h2 className="text-lg font-bold text-slate-800">Status Kuota Akun</h2>
+            <h2 className="text-lg font-bold text-slate-800">Kuota Akun Keluarga</h2>
             <p className="text-sm text-slate-500">
-              Anda dapat mendaftarkan diri sendiri dan keluarga.
+              Anda dapat mendaftarkan maksimal 6 anggota keluarga dalam satu akun.
             </p>
             
             <div className="mt-3 flex items-center justify-center md:justify-start gap-4 text-sm font-medium">
-                <span className="text-slate-600">Terpakai: <strong className="text-slate-900">{terpakai}</strong></span>
-                <span className="text-slate-300">|</span>
-                <span className="text-slate-600">Sisa: <strong className={sisa > 0 ? "text-green-600" : "text-red-500"}>{sisa}</strong></span>
+                <span className="text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">Terpakai: <strong className="text-slate-900">{terpakai}</strong></span>
+                <span className="text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">Sisa: <strong className={sisa > 0 ? "text-green-600" : "text-red-500"}>{sisa}</strong></span>
             </div>
           </div>
 
@@ -224,8 +246,8 @@ export default function Dashboard() {
                 <Bus size={18}/> Tambah Penumpang
               </button>
             ) : (
-              <div className="px-6 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold border border-slate-200 flex items-center justify-center gap-2 cursor-not-allowed">
-                <span className="w-2 h-2 bg-red-500 rounded-full"></span> Kuota Penuh (Max 6)
+              <div className="px-6 py-3 bg-red-50 text-red-500 rounded-xl font-bold border border-red-100 flex items-center justify-center gap-2 cursor-not-allowed opacity-80">
+                <AlertCircle size={18}/> Kuota Penuh
               </div>
             )}
           </div>
@@ -234,15 +256,17 @@ export default function Dashboard() {
         {/* LIST PENUMPANG */}
         <div>
           <h3 className="font-bold text-slate-800 mb-6 text-xl flex items-center gap-2">
-            <span className="w-1 h-6 bg-blue-600 rounded-full"></span>
-            Riwayat Pendaftaran
+            <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
+            Daftar & Status Tiket
           </h3>
 
           {listData.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
-                <Bus size={48} className="mx-auto text-slate-300 mb-4"/>
-                <p className="text-slate-500 font-medium">Belum ada data pendaftaran.</p>
-                <p className="text-slate-400 text-sm mt-1">Silakan klik tombol Tambah Penumpang di atas.</p>
+            <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Bus size={32} className="text-slate-400"/>
+                </div>
+                <p className="text-slate-600 font-bold">Belum ada data pendaftaran.</p>
+                <p className="text-slate-400 text-sm mt-1 mb-4">Silakan daftarkan diri atau keluarga Anda sekarang.</p>
             </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
@@ -278,43 +302,73 @@ function MenuItem({ icon, label, onClick, danger = false }: any) {
 
 function CardPenumpang({ data, onDownload }: { data: Pendaftaran; onDownload: () => void }) {
   
-  // Helper Status Badge
-  const StatusBadge = ({ status }: { status: string }) => {
-      const styles: any = {
-          'DITERIMA': 'bg-green-100 text-green-700 border-green-200',
-          'DITOLAK': 'bg-red-100 text-red-700 border-red-200',
-          'MENUNGGU_VERIFIKASI': 'bg-yellow-100 text-yellow-700 border-yellow-200',
-      };
-      const label = status.replace(/_/g, " ");
+  // Logic Status
+  const isTerkonfirmasi = data.status_pendaftaran === 'TERKONFIRMASI';
+  const isDiterima = data.status_pendaftaran === 'DITERIMA';
+  const isMenunggu = data.status_pendaftaran === 'MENUNGGU_VERIFIKASI';
+  const isDitolak = data.status_pendaftaran === 'DITOLAK' || data.status_pendaftaran === 'DIBATALKAN';
+
+  // 🔥 VALIDASI KETAT BUS (BIAR GAK BISA DOWNLOAD KALAU BELUM PLOTTING) 🔥
+  // 1. Bus tidak boleh null
+  // 2. Bus tidak boleh string kosong
+  // 3. Bus tidak boleh "-"
+  // 4. Bus tidak boleh "Belum Plotting" (Default value dari backend)
+  const busValid = data.nama_bus && 
+                   data.nama_bus.trim() !== "" && 
+                   data.nama_bus !== "-" && 
+                   data.nama_bus.toLowerCase() !== "belum plotting";
+
+  // Syarat Download: SUDAH KONFIRMASI WA + SUDAH ADA BUS
+  const canDownload = isTerkonfirmasi && busValid;
+
+  // Helper Badge Status
+  const StatusBadge = () => {
+      let color = "bg-slate-100 text-slate-600 border-slate-200";
+      let label = data.status_pendaftaran.replace(/_/g, " ");
+
+      if (isTerkonfirmasi) {
+          color = "bg-green-100 text-green-700 border-green-200";
+          label = "SIAP BERANGKAT";
+      } else if (isDiterima) {
+          color = "bg-blue-100 text-blue-700 border-blue-200";
+          label = "DITERIMA";
+      } else if (isMenunggu) {
+          color = "bg-yellow-100 text-yellow-700 border-yellow-200";
+      } else if (isDitolak) {
+          color = "bg-red-100 text-red-700 border-red-200";
+      }
+
       return (
-        <span className={`px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wide ${styles[status] || 'bg-slate-100'}`}>
+        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wide ${color}`}>
             {label}
         </span>
       );
   };
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow group relative overflow-hidden">
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all group relative overflow-hidden flex flex-col">
       {/* Dekorasi Background */}
-      <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-6 -mt-6 opacity-50 group-hover:bg-blue-100 transition"></div>
+      <div className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full -mr-6 -mt-6 opacity-20 transition
+        ${canDownload ? "bg-green-500" : isTerkonfirmasi ? "bg-purple-500" : isDiterima ? "bg-blue-500" : "bg-slate-300"}
+      `}></div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 flex-1">
         <div className="flex justify-between items-start mb-4">
             <div>
                 <h4 className="font-bold text-lg text-slate-800 line-clamp-1">{data.nama_peserta}</h4>
                 <p className="text-xs text-slate-400 font-mono mt-1 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-slate-300 rounded-full"></span>
+                    <span className={`w-2 h-2 rounded-full ${canDownload ? "bg-green-500" : "bg-slate-300"}`}></span>
                     NIK: {data.nik_peserta}
                 </p>
             </div>
-            <StatusBadge status={data.status_pendaftaran} />
+            <StatusBadge />
         </div>
 
         <div className="space-y-3 text-sm bg-slate-50/50 p-4 rounded-xl border border-slate-100 mb-5">
             <div className="flex gap-3 items-start">
                 <MapPin size={16} className="text-red-500 mt-0.5 shrink-0" />
                 <div>
-                    <p className="text-xs text-slate-400 uppercase font-bold">Tujuan</p>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Tujuan</p>
                     <p className="font-semibold text-slate-700">{data.tujuan || "-"}</p>
                 </div>
             </div>
@@ -322,7 +376,7 @@ function CardPenumpang({ data, onDownload }: { data: Pendaftaran; onDownload: ()
             <div className="flex gap-3 items-start">
                 <Calendar size={16} className="text-blue-500 mt-0.5 shrink-0" />
                 <div>
-                    <p className="text-xs text-slate-400 uppercase font-bold">Keberangkatan</p>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Jadwal</p>
                     <p className="font-semibold text-slate-700">{data.tanggal_keberangkatan || "Menunggu Jadwal"}</p>
                 </div>
             </div>
@@ -330,29 +384,73 @@ function CardPenumpang({ data, onDownload }: { data: Pendaftaran; onDownload: ()
             <div className="flex gap-3 items-start">
                 <Bus size={16} className="text-purple-500 mt-0.5 shrink-0" />
                 <div>
-                    <p className="text-xs text-slate-400 uppercase font-bold">Armada Bus</p>
-                    <p className="font-semibold text-purple-700">{data.nama_bus}</p>
-                    {data.plat_nomor !== "-" && (
-                        <span className="text-[10px] bg-white border px-1.5 py-0.5 rounded text-slate-500 font-mono mt-1 inline-block">
-                            {data.plat_nomor}
-                        </span>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Bus</p>
+                    {busValid ? (
+                        <>
+                            <p className="font-semibold text-purple-700">{data.nama_bus}</p>
+                            {data.plat_nomor && data.plat_nomor !== "-" && (
+                                <span className="text-[10px] bg-white border px-1.5 py-0.5 rounded text-slate-500 font-mono mt-1 inline-block">
+                                    {data.plat_nomor}
+                                </span>
+                            )}
+                        </>
+                    ) : (
+                        <p className="font-medium text-slate-400 italic text-xs">Sedang diatur Admin...</p>
                     )}
                 </div>
             </div>
         </div>
+      </div>
 
-        {data.status_pendaftaran === "DITERIMA" ? (
+      {/* FOOTER ACTION AREA */}
+      <div className="mt-auto pt-4 border-t border-slate-50">
+        
+        {/* CASE 1: SIAP DOWNLOAD (Status OK + Bus OK) */}
+        {canDownload && (
             <button
             onClick={onDownload}
-            className="w-full bg-green-600 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-100 hover:bg-green-700 active:scale-95 transition"
+            className="w-full bg-green-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-100 hover:bg-green-700 active:scale-95 transition animate-in fade-in"
             >
-            <Download size={16} /> Download E-Tiket
+            <Download size={18} /> Download E-Tiket
             </button>
-        ) : (
-            <div className="text-center text-xs text-slate-400 italic bg-slate-50 py-2.5 rounded-xl border border-slate-100">
-                Tiket dapat diunduh setelah status <strong>DITERIMA</strong>
+        )}
+
+        {/* CASE 2: TERKONFIRMASI TAPI BELUM ADA BUS (Menunggu Plotting) */}
+        {isTerkonfirmasi && !busValid && (
+             <div className="bg-purple-50 text-purple-700 p-3 rounded-xl text-xs flex items-center gap-2 border border-purple-100">
+                <Ticket size={16} className="shrink-0" />
+                <span>
+                    <strong>Terkonfirmasi!</strong> Tiket akan tersedia setelah Admin menentukan nomor bus. Mohon cek berkala.
+                </span>
             </div>
         )}
+
+        {/* CASE 3: DITERIMA (Menunggu H-3) */}
+        {isDiterima && (
+            <div className="bg-blue-50 text-blue-700 p-3 rounded-xl text-xs flex items-start gap-2 border border-blue-100">
+                <Clock size={16} className="shrink-0 mt-0.5"/>
+                <span>
+                    <strong>Data Valid!</strong> Mohon tunggu pesan WhatsApp H-3 keberangkatan untuk <u>Konfirmasi Kehadiran</u>.
+                </span>
+            </div>
+        )}
+
+        {/* CASE 4: MENUNGGU VERIFIKASI */}
+        {isMenunggu && (
+            <div className="bg-yellow-50 text-yellow-700 p-3 rounded-xl text-xs flex items-center gap-2 border border-yellow-100 justify-center">
+                <Info size={16} />
+                <span>Data sedang diperiksa/diverifikasi oleh Admin.</span>
+            </div>
+        )}
+
+        {/* CASE 5: DITOLAK */}
+        {isDitolak && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs flex items-center gap-2 border border-red-100 justify-center">
+                <AlertCircle size={16} />
+                <span>Mohon maaf, pendaftaran tidak lolos/dibatalkan.</span>
+            </div>
+        )}
+
       </div>
     </div>
   )

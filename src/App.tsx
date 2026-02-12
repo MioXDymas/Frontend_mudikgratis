@@ -12,9 +12,10 @@ import Bantuan from "./pages/Bantuan"
 
 // --- PAGES ADMIN ---
 import LoginAdmin from "./pages/LoginAdmin"
-import AdminDashboard from "./pages/AdminDashboard"   // Halaman Utama (Stats + Menu)
-import AdminPendaftar from "./pages/AdminPendaftar"   // Halaman Verifikasi
-import AdminKendaraan from "./pages/AdminKendaraan"   // Halaman CRUD Bus
+import AdminDashboard from "./pages/AdminDashboard" 
+import AdminPendaftar from "./pages/AdminPendaftar" 
+import AdminKendaraan from "./pages/AdminKendaraan" 
+import AdminRute from "./pages/AdminRute" // 🔥 JANGAN LUPA IMPORT INI
 import Konfirmasi from "./pages/Konfirmasi"
 
 function AnimatedRoutes() {
@@ -45,6 +46,11 @@ function AnimatedRoutes() {
         {/* ADMIN: MENU CRUD & VERIFIKASI */}
         <Route path="/admin/verifikasi" element={<PageWrapper><AdminPendaftar /></PageWrapper>} />
         <Route path="/admin/kendaraan" element={<PageWrapper><AdminKendaraan /></PageWrapper>} />
+        
+        {/* 🔥 TAMBAHKAN ROUTE RUTE DISINI 🔥 */}
+        <Route path="/admin/rute" element={<PageWrapper><AdminRute /></PageWrapper>} />
+
+        {/* KONFIRMASI WA */}
         <Route path="/konfirmasi/:userId" element={<PageWrapper><Konfirmasi /></PageWrapper>} />
 
       </Routes>

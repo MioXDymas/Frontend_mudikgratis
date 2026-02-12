@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-    Search, Clock, LogOut, Printer, ChevronDown, ChevronUp, 
-    Bus, Users, Filter, MoreHorizontal, XCircle, CheckCircle, 
-    MessageCircle, AlertTriangle, Send, RefreshCw, Trash2, MapPin
+    Search, CheckCircle, XCircle, Clock, LogOut, Printer, 
+    RefreshCw, Trash2, ChevronDown, ChevronUp, Bus, Users, Filter, MoreHorizontal, 
+    Send, MessageCircle, AlertTriangle, MapPin, Undo2
 } from 'lucide-react';
 import { AdminAPI, API, BASE_URL } from '../lib/api'; 
 
@@ -62,7 +62,6 @@ export default function AdminPendaftar() {
 
     useEffect(() => {
         loadData();
-        // Tutup dropdown kalau klik di luar
         const handleClickOutside = () => setActiveDropdown(null);
         document.addEventListener('click', handleClickOutside);
         return () => document.removeEventListener('click', handleClickOutside);
@@ -138,24 +137,21 @@ export default function AdminPendaftar() {
         }
         
         // Aksi 2: Kirim WA Saja
-        if (action === "WA_VERIF") {
-            openWa(head.no_hp_target, "WA_VERIF", head.nama_kepala_keluarga || head.nama_peserta);
-            return;
-        }
-        if (action === "WA_H3") {
-            openWa(head.no_hp_target, "WA_H3", head.id_keluarga.toString()); // Kirim ID User
-            return;
-        }
-        if (action === "WA_TIKET") {
-            openWa(head.no_hp_target, "WA_TIKET", head.nama_kepala_keluarga || head.nama_peserta);
+        if (["WA_VERIF", "WA_H3", "WA_TIKET"].includes(action)) {
+            const param = action === "WA_H3" ? head.id_keluarga.toString() : (head.nama_kepala_keluarga || head.nama_peserta);
+            openWa(head.no_hp_target, action, param);
             return;
         }
 
         // Aksi 3: Ubah Status (Butuh API)
         let statusKirim = action; 
-        if (action === "RESET") statusKirim = "MENUNGGU_VERIFIKASI";
+        if (action === "RESET") statusKirim = "MENUNGGU_VERIFIKASI"; // Reset balik ke awal
 
-        if (!window.confirm(`Yakin ubah status menjadi ${statusKirim}?`)) return;
+        const confirmMsg = action === "RESET" 
+            ? `PULIHKAN data keluarga ini kembali ke status Menunggu Verifikasi?` 
+            : `Yakin ubah status menjadi ${statusKirim}?`;
+
+        if (!window.confirm(confirmMsg)) return;
 
         try {
             const token = localStorage.getItem("token");
@@ -165,9 +161,9 @@ export default function AdminPendaftar() {
                 body: JSON.stringify({ status: statusKirim })
             });
             
-            await loadData(); // Refresh tabel
+            await loadData(); 
 
-            // Auto WA
+            // Auto WA jika Terima/Tolak
             if (statusKirim === 'DITERIMA' || statusKirim === 'DITOLAK') {
                 openWa(head.no_hp_target, statusKirim, head.nama_kepala_keluarga || head.nama_peserta);
             }
@@ -204,7 +200,7 @@ export default function AdminPendaftar() {
         }
     };
 
-    // --- ACTIONS INDIVIDUAL (DI DALAM MODAL) ---
+    // --- ACTIONS INDIVIDUAL ---
     const updateStatusIndividual = async (id: number, status: string) => {
         if (!window.confirm("Ubah status peserta ini?")) return;
         try {
@@ -320,18 +316,19 @@ export default function AdminPendaftar() {
                                 const isExp = expandedFamilies[familyId];
                                 const isDiterima = head.status === "DITERIMA";
                                 const isTerkonfirmasi = head.status === "TERKONFIRMASI";
+                                const isDibatalkan = head.status === "DIBATALKAN";
                                 const isDropdownOpen = activeDropdown === familyId;
 
                                 return (
                                     <React.Fragment key={familyId}>
-                                        <tr className={`hover:bg-blue-50/50 transition ${isExp ? "bg-blue-50/30" : ""}`}>
+                                        <tr className={`hover:bg-blue-50/50 transition ${isExp ? "bg-blue-50/30" : ""} ${isDibatalkan ? "opacity-60 bg-slate-50" : ""}`}>
                                             <td className="px-6 py-4">
                                                 <button onClick={() => setExpandedFamilies(p => ({...p, [familyId]: !p[familyId]}))} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition">
                                                     {isExp ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
                                                 </button>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-slate-800 text-base">{head.nama_kepala_keluarga || head.nama_peserta}</div>
+                                                <div className={`font-bold text-base ${isDibatalkan ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{head.nama_kepala_keluarga || head.nama_peserta}</div>
                                                 <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                                                     <span className="bg-slate-100 px-1.5 py-0.5 rounded">{head.no_hp_target}</span>
                                                 </div>
@@ -362,9 +359,20 @@ export default function AdminPendaftar() {
                                                 </button>
 
                                                 {isDropdownOpen && (
-                                                    <div className="absolute right-8 top-12 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                                                    <div className="absolute right-8 top-12 w-60 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right text-left">
                                                         <div className="p-2 space-y-1">
-                                                            {/* STATUS: MENUNGGU VERIFIKASI */}
+                                                            
+                                                            {/* 1. STATUS: DIBATALKAN (FITUR EMERGENCY RESET) */}
+                                                            {isDibatalkan && (
+                                                                <>
+                                                                    <div className="px-3 py-2 text-xs text-slate-400 font-bold bg-slate-50 border-b mb-1">
+                                                                        Data Dibatalkan
+                                                                    </div>
+                                                                    <MenuButton icon={<RefreshCw size={16}/>} label="Pulihkan (Reset)" onClick={() => handleMenuAction('RESET', familyId, head)} color="text-blue-600 hover:bg-blue-50" />
+                                                                </>
+                                                            )}
+
+                                                            {/* 2. STATUS: MENUNGGU VERIFIKASI */}
                                                             {head.status === "MENUNGGU_VERIFIKASI" && (
                                                                 <>
                                                                     <MenuButton icon={<CheckCircle size={16}/>} label="Terima Sekeluarga" onClick={() => handleMenuAction('DITERIMA', familyId, head)} color="text-green-600 hover:bg-green-50" />
@@ -373,25 +381,30 @@ export default function AdminPendaftar() {
                                                                 </>
                                                             )}
                                                             
-                                                            {/* STATUS: DITERIMA (H-3) */}
+                                                            {/* 3. STATUS: DITERIMA (H-3) */}
                                                             {isDiterima && (
                                                                 <>
                                                                     <MenuButton icon={<Send size={16}/>} label="Kirim Link Konfirmasi" onClick={() => handleMenuAction('WA_H3', familyId, head)} color="text-blue-600 hover:bg-blue-50" />
-                                                                    <MenuButton icon={<XCircle size={16}/>} label="Batalkan Penerimaan" onClick={() => handleMenuAction('DITOLAK', familyId, head)} color="text-red-600 hover:bg-red-50" />
+                                                                    <MenuButton icon={<Undo2 size={16}/>} label="Batalkan Penerimaan" onClick={() => handleMenuAction('RESET', familyId, head)} color="text-orange-600 hover:bg-orange-50" />
+                                                                    <MenuButton icon={<XCircle size={16}/>} label="Tolak Permanen" onClick={() => handleMenuAction('DITOLAK', familyId, head)} color="text-red-600 hover:bg-red-50" />
                                                                 </>
                                                             )}
 
-                                                            {/* STATUS: TERKONFIRMASI (SIAP PLOTTING) */}
+                                                            {/* 4. STATUS: TERKONFIRMASI (SIAP PLOTTING) */}
                                                             {isTerkonfirmasi && (
                                                                 <>
                                                                     <MenuButton icon={<Bus size={16}/>} label="Plotting Bus" onClick={() => handleMenuAction('PLOTTING', familyId, head)} color="text-purple-600 hover:bg-purple-50" />
                                                                     <MenuButton icon={<Printer size={16}/>} label="WA Info Tiket" onClick={() => handleMenuAction('WA_TIKET', familyId, head)} />
-                                                                    <MenuButton icon={<RefreshCw size={16}/>} label="Reset Status" onClick={() => handleMenuAction('RESET', familyId, head)} />
+                                                                    <MenuButton icon={<RefreshCw size={16}/>} label="Reset ke Menunggu" onClick={() => handleMenuAction('RESET', familyId, head)} />
                                                                 </>
                                                             )}
 
-                                                            <div className="border-t border-slate-100 my-1"></div>
-                                                            <MenuButton icon={<Trash2 size={16}/>} label="Hapus Data" onClick={() => handleMenuAction('DIBATALKAN', familyId, head)} color="text-slate-400 hover:text-red-600 hover:bg-red-50" />
+                                                            {!isDibatalkan && (
+                                                                <>
+                                                                    <div className="border-t border-slate-100 my-1"></div>
+                                                                    <MenuButton icon={<Trash2 size={16}/>} label="Hapus Data (Batal)" onClick={() => handleMenuAction('DIBATALKAN', familyId, head)} color="text-slate-400 hover:text-red-600 hover:bg-red-50" />
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 )}
@@ -448,11 +461,10 @@ export default function AdminPendaftar() {
                 </div>
             </div>
 
-            {/* MODAL DETAIL (READ ONLY) */}
+            {/* MODAL DETAIL */}
             {isModalOpen && selectedItem && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
                     <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden max-h-[90vh]">
-                        {/* Kiri: Foto */}
                         <div className="bg-slate-900 p-8 flex items-center justify-center md:w-1/2 relative group">
                             {selectedItem.foto_bukti ? 
                                 <>
@@ -465,7 +477,6 @@ export default function AdminPendaftar() {
                                 <span className="text-white/50 flex flex-col items-center gap-2"><XCircle size={32}/> Tidak ada foto</span>
                             }
                         </div>
-                        {/* Kanan: Info Detail */}
                         <div className="p-8 md:w-1/2 flex flex-col bg-white">
                             <div className="flex justify-between items-start mb-6">
                                 <div>
